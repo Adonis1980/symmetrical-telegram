@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RepRally AI - Sales Automation System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-blue-50 via-white to-purple-50 min-h-screen">
+    
+    <!-- Header -->
+    <header class="bg-white shadow-sm sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="gradient-bg p-2 rounded-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                        RepRally AI
+                    </h1>
+                </div>
+                <a href="reprally-ai-agents.zip" download class="flex items-center space-x-2 gradient-bg text-white px-6 py-2 rounded-lg hover:shadow-lg transition-all">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                    </svg>
+                    <span>Download System</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="text-center">
+            <div class="inline-block mb-4 px-4 py-2 bg-blue-100 rounded-full">
+                <span class="text-blue-700 font-semibold text-sm">AI-Powered Sales Automation</span>
+            </div>
+            <h2 class="text-5xl font-bold mb-6 text-gray-900">
+                Automate Your Sales Workflow
+                <br>
+                <span class="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Focus on Closing Deals
+                </span>
+            </h2>
+            <p class="text-xl text-gray-600 max-w-3xl mx-auto mb-8">
+                RepRally AI handles research, writing, reminders, and reporting so you can focus on what matters most: customer interactions and placing orders.
+            </p>
+        </div>
+
+        <!-- Key Benefits -->
+        <div class="grid md:grid-cols-3 gap-8 mt-16">
+            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                <div class="bg-blue-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-3">5 AI Agents</h3>
+                <p class="text-gray-600">
+                    Specialized agents for research, writing, follow-ups, reminders, and reporting working together seamlessly.
+                </p>
+            </div>
+
+            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                <div class="bg-purple-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-3">Zapier Integration</h3>
+                <p class="text-gray-600">
+                    Pre-built workflow templates to connect with your existing tools and automate everything.
+                </p>
+            </div>
+
+            <div class="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-shadow">
+                <div class="bg-green-100 w-12 h-12 rounded-lg flex items-center justify-center mb-4">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-bold mb-3">Increase Productivity</h3>
+                <p class="text-gray-600">
+                    Save hours each day by automating repetitive tasks and focusing on high-value activities.
+                </p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Tabs Section -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="bg-white rounded-xl shadow-lg overflow-hidden">
+            <div class="border-b border-gray-200">
+                <div class="flex">
+                    <button onclick="showTab('overview')" id="tab-overview" class="tab-btn flex-1 py-4 px-6 font-semibold transition-colors gradient-bg text-white">
+                        System Overview
+                    </button>
+                    <button onclick="showTab('features')" id="tab-features" class="tab-btn flex-1 py-4 px-6 font-semibold transition-colors text-gray-600 hover:bg-gray-50">
+                        Features & Agents
+                    </button>
+                    <button onclick="showTab('setup')" id="tab-setup" class="tab-btn flex-1 py-4 px-6 font-semibold transition-colors text-gray-600 hover:bg-gray-50">
+                        Setup Guide
+                    </button>
+                </div>
+            </div>
+
+            <div class="p-8">
+                <!-- Overview Tab -->
+                <div id="content-overview" class="tab-content active">
+                    <h3 class="text-3xl font-bold mb-6">What's Included</h3>
+                    
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div class="border-l-4 border-blue-600 pl-6">
+                            <h4 class="font-bold text-lg mb-2">5 AI Agent Scripts</h4>
+                            <p class="text-gray-600">
+                                Core Python logic for each specialized agent, ready to deploy and customize.
+                            </p>
+                        </div>
+
+                        <div class="border-l-4 border-purple-600 pl-6">
+                            <h4 class="font-bold text-lg mb-2">5 Zapier Templates</h4>
+                            <p class="text-gray-600">
+                                JSON workflow files to import automation directly into your Zapier account.
+                            </p>
+                        </div>
+
+                        <div class="border-l-4 border-green-600 pl-6">
+                            <h4 class="font-bold text-lg mb-2">Complete Documentation</h4>
+                            <p class="text-gray-600">
+                                README, architecture guide, and detailed setup instructions with step-by-step tutorials.
+                            </p>
+                        </div>
+
+                        <div class="border-l-4 border-orange-600 pl-6">
+                            <h4 class="font-bold text-lg mb-2">Production Ready</h4>
+                            <p class="text-gray-600">
+                                Fully tested system with error handling, logging, and best practices built in.
+                            </p>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg mt-8">
+                        <h4 class="font-bold text-lg mb-3">System Architecture</h4>
+                        <p class="text-gray-700 mb-4">
+                            The RepRally AI system uses a multi-agent architecture where each agent specializes in a specific task:
+                        </p>
+                        <ul class="space-y-2 text-gray-700">
+                            <li class="flex items-start">
+                                <span class="mr-2">→</span>
+                                <span><strong>Research Agent:</strong> Gathers prospect information and market intelligence</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2">→</span>
+                                <span><strong>Writing Agent:</strong> Creates personalized emails and proposals</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2">→</span>
+                                <span><strong>Follow-up Agent:</strong> Manages communication sequences automatically</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2">→</span>
+                                <span><strong>Reminder Agent:</strong> Keeps you on track with timely notifications</span>
+                            </li>
+                            <li class="flex items-start">
+                                <span class="mr-2">→</span>
+                                <span><strong>Reporting Agent:</strong> Generates insights and performance analytics</span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Features Tab -->
+                <div id="content-features" class="tab-content">
+                    <h3 class="text-3xl font-bold mb-6">Agent Capabilities</h3>
+
+                    <div class="space-y-6">
+                        <div class="bg-blue-50 p-6 rounded-lg">
+                            <h4 class="text-xl font-bold text-blue-900 mb-3">🔍 Research Agent</h4>
+                            <ul class="space-y-2 text-gray-700">
+                                <li>✓ Automatically researches prospects and companies using web scraping and APIs</li>
+                                <li>✓ Gathers key decision-maker information and contact details</li>
+                                <li>✓ Identifies pain points and business opportunities</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-purple-50 p-6 rounded-lg">
+                            <h4 class="text-xl font-bold text-purple-900 mb-3">✍️ Writing Agent</h4>
+                            <ul class="space-y-2 text-gray-700">
+                                <li>✓ Generates personalized emails tailored to each prospect</li>
+                                <li>✓ Creates compelling proposals and sales materials</li>
+                                <li>✓ Maintains your brand voice and style guidelines</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-green-50 p-6 rounded-lg">
+                            <h4 class="text-xl font-bold text-green-900 mb-3">🔄 Follow-up Agent</h4>
+                            <ul class="space-y-2 text-gray-700">
+                                <li>✓ Schedules and sends follow-up sequences automatically</li>
+                                <li>✓ Adjusts messaging based on prospect engagement</li>
+                                <li>✓ Prevents leads from falling through the cracks</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-orange-50 p-6 rounded-lg">
+                            <h4 class="text-xl font-bold text-orange-900 mb-3">⏰ Reminder Agent</h4>
+                            <ul class="space-y-2 text-gray-700">
+                                <li>✓ Sends smart reminders for calls, meetings, and deadlines</li>
+                                <li>✓ Integrates with your calendar and task management tools</li>
+                                <li>✓ Prioritizes actions based on deal value and urgency</li>
+                            </ul>
+                        </div>
+
+                        <div class="bg-indigo-50 p-6 rounded-lg">
+                            <h4 class="text-xl font-bold text-indigo-900 mb-3">📊 Reporting Agent</h4>
+                            <ul class="space-y-2 text-gray-700">
+                                <li>✓ Generates daily, weekly, and monthly performance reports</li>
+                                <li>✓ Tracks KPIs and provides actionable insights</li>
+                                <li>✓ Visualizes pipeline health and conversion rates</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Setup Tab -->
+                <div id="content-setup" class="tab-content">
+                    <h3 class="text-3xl font-bold mb-6">Quick Setup Guide</h3>
+
+                    <div class="bg-gradient-to-r from-blue-50 to-purple-50 p-6 rounded-lg mb-6">
+                        <p class="text-gray-700 font-semibold">
+                            Get up and running in under 30 minutes! Follow these simple steps:
+                        </p>
+                    </div>
+
+                    <div class="space-y-6">
+                        <div class="flex items-start space-x-4">
+                            <div class="gradient-bg text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">
+                                1
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg mb-2">Download the System</h4>
+                                <p class="text-gray-600 mb-2">
+                                    Click the download button at the top of this page to get reprally-ai-agents.zip
+                                </p>
+                                <p class="text-sm text-gray-500">Extract the files to your preferred directory</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-4">
+                            <div class="gradient-bg text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">
+                                2
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg mb-2">Install Dependencies</h4>
+                                <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm mb-2">
+                                    pip install -r requirements.txt
+                                </div>
+                                <p class="text-sm text-gray-500">Installs Python packages needed for the AI agents</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-4">
+                            <div class="gradient-bg text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">
+                                3
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg mb-2">Configure Environment</h4>
+                                <p class="text-gray-600 mb-2">
+                                    Set up your API keys and environment variables in the .env file
+                                </p>
+                                <div class="bg-gray-100 p-3 rounded text-sm text-gray-700">
+                                    <div>• OpenAI API key for AI processing</div>
+                                    <div>• Email credentials for outreach</div>
+                                    <div>• CRM integration tokens (optional)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-4">
+                            <div class="gradient-bg text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">
+                                4
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg mb-2">Import Zapier Workflows</h4>
+                                <p class="text-gray-600 mb-2">
+                                    Upload the JSON templates from the zapier_templates folder to your Zapier account
+                                </p>
+                                <p class="text-sm text-gray-500">Each template connects one agent to your workflow</p>
+                            </div>
+                        </div>
+
+                        <div class="flex items-start space-x-4">
+                            <div class="gradient-bg text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">
+                                5
+                            </div>
+                            <div>
+                                <h4 class="font-bold text-lg mb-2">Test & Deploy</h4>
+                                <p class="text-gray-600 mb-2">
+                                    Run test scripts to verify everything works, then deploy to production
+                                </p>
+                                <div class="bg-gray-900 text-green-400 p-4 rounded-lg font-mono text-sm">
+                                    python test_agents.py
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-yellow-50 border-l-4 border-yellow-400 p-6 rounded mt-8">
+                        <h4 class="font-bold text-lg mb-2 text-yellow-900">📚 Detailed Documentation</h4>
+                        <p class="text-gray-700">
+                            The SETUP.md file in the download contains comprehensive step-by-step instructions with screenshots, troubleshooting tips, and advanced configuration options.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Section -->
+    <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div class="gradient-bg rounded-2xl p-12 text-center text-white">
+            <h3 class="text-3xl font-bold mb-4">Ready to Transform Your Sales Process?</h3>
+            <p class="text-xl mb-8 opacity-90">
+                Download the complete system and start automating your workflow today
+            </p>
+            <a href="reprally-ai-agents.zip" download class="inline-flex items-center space-x-2 bg-white text-blue-600 px-8 py-4 rounded-lg font-bold text-lg hover:shadow-2xl transition-all">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                </svg>
+                <span>Download RepRally AI (44.1 KB)</span>
+            </a>
+            <p class="mt-6 text-sm opacity-75">
+                Includes 5 AI agents, Zapier templates, and complete documentation
+            </p>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-900 text-white py-12">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center">
+                <div class="flex items-center justify-center space-x-3 mb-4">
+                    <div class="gradient-bg p-2 rounded-lg">
+                        <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                    </div>
+                    <h3 class="text-2xl font-bold">RepRally AI</h3>
+                </div>
+                <p class="text-gray-400 mb-4">
+                    Automate your sales workflow and focus on closing deals
+                </p>
+                <p class="text-gray-500 text-sm">
+                    © 2024 RepRally AI. Built for sales professionals who want to work smarter.
+                </p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function showTab(tabName) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Remove active styling from all buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('gradient-bg', 'text-white');
+                btn.classList.add('text-gray-600', 'hover:bg-gray-50');
+            });
+            
+            // Show selected tab content
+            document.getElementById('content-' + tabName).classList.add('active');
+            
+            // Add active styling to selected button
+            const activeBtn = document.getElementById('tab-' + tabName);
+            activeBtn.classList.add('gradient-bg', 'text-white');
+            activeBtn.classList.remove('text-gray-600', 'hover:bg-gray-50');
+        }
+    </script>
+</body>
+</html>
