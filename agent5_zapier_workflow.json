@@ -1,0 +1,252 @@
+{
+  "workflow_name": "Agent 5: Weekly Report Generator",
+  "description": "Generates comprehensive weekly sales reports with metrics, insights, and recommendations",
+  "trigger": {
+    "app": "Schedule by Zapier",
+    "event": "Every Week",
+    "day": "Monday",
+    "time": "09:00 AM",
+    "timezone": "America/New_York"
+  },
+  "steps": [
+    {
+      "step": 1,
+      "name": "Calculate Week Dates",
+      "app": "Code by Zapier",
+      "action": "Run Python",
+      "config": {
+        "code": "from datetime import datetime, timedelta\n\n# Get last week's date range (Monday to Sunday)\ntoday = datetime.now()\nlast_sunday = today - timedelta(days=today.weekday() + 1)\nlast_monday = last_sunday - timedelta(days=6)\n\nreturn {\n    'start_date': last_monday.strftime('%Y-%m-%d'),\n    'end_date': last_sunday.strftime('%Y-%m-%d'),\n    'week_label': f\"{last_monday.strftime('%b %d')} - {last_sunday.strftime('%b %d, %Y')}\"\n}"
+      },
+      "output_fields": [
+        "start_date",
+        "end_date",
+        "week_label"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Get All Stores from Sheet",
+      "app": "Google Sheets",
+      "action": "Get Many Spreadsheet Rows",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Stores"
+      }
+    },
+    {
+      "step": 3,
+      "name": "Get Orders from Last Week",
+      "app": "Google Sheets",
+      "action": "Lookup Spreadsheet Rows",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Orders",
+        "lookup_column": "Order Date",
+        "lookup_value": "{{step1.start_date}}:{{step1.end_date}}",
+        "max_results": 1000
+      }
+    },
+    {
+      "step": 4,
+      "name": "Get Activities from Last Week",
+      "app": "Google Sheets",
+      "action": "Lookup Spreadsheet Rows",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Activities",
+        "lookup_column": "Date",
+        "lookup_value": "{{step1.start_date}}:{{step1.end_date}}",
+        "max_results": 1000
+      }
+    },
+    {
+      "step": 5,
+      "name": "Calculate Metrics",
+      "app": "Code by Zapier",
+      "action": "Run Python",
+      "config": {
+        "code": "import json\n\n# Parse input data\nstores = input_data.get('stores', [])\norders = input_data.get('orders', [])\nactivities = input_data.get('activities', [])\n\n# Initialize metrics\nmetrics = {\n    'new_stores_added': 0,\n    'total_stores': len(stores) if stores else 0,\n    'total_orders': len(orders) if orders else 0,\n    'first_orders': 0,\n    'reorders': 0,\n    'total_cases': 0,\n    'orders_by_brand': {},\n    'total_activities': len(activities) if activities else 0,\n    'calls_made': 0,\n    'visits_made': 0,\n    'emails_sent': 0,\n    'stores_contacted': 0,\n    'stores_converted': 0,\n    'conversion_rate': 0.0\n}\n\n# Process stores\nif stores:\n    for store in stores:\n        if store.get('status') == 'new':\n            metrics['new_stores_added'] += 1\n\n# Process orders\nif orders:\n    for order in orders:\n        if order.get('order_type') == 'first':\n            metrics['first_orders'] += 1\n        else:\n            metrics['reorders'] += 1\n        \n        try:\n            cases = int(order.get('cases', 0))\n            metrics['total_cases'] += cases\n        except:\n            pass\n        \n        brand = order.get('brand_name', 'Unknown')\n        metrics['orders_by_brand'][brand] = metrics['orders_by_brand'].get(brand, 0) + 1\n\n# Process activities\ncontacted = set()\nconverted = set()\n\nif activities:\n    for activity in activities:\n        act_type = str(activity.get('activity_type', '')).lower()\n        \n        if 'call' in act_type:\n            metrics['calls_made'] += 1\n        elif 'visit' in act_type:\n            metrics['visits_made'] += 1\n        elif 'email' in act_type:\n            metrics['emails_sent'] += 1\n        \n        store_id = activity.get('store_id')\n        if store_id:\n            contacted.add(store_id)\n            if activity.get('outcome') == 'ordered':\n                converted.add(store_id)\n\nmetrics['stores_contacted'] = len(contacted)\nmetrics['stores_converted'] = len(converted)\n\nif metrics['stores_contacted'] > 0:\n    metrics['conversion_rate'] = round((metrics['stores_converted'] / metrics['stores_contacted']) * 100, 1)\n\nreturn metrics",
+        "input_data": {
+          "stores": "{{step2.rows}}",
+          "orders": "{{step3.rows}}",
+          "activities": "{{step4.rows}}"
+        }
+      }
+    },
+    {
+      "step": 6,
+      "name": "AI Generate Insights",
+      "app": "OpenAI (GPT-4)",
+      "action": "Send Prompt",
+      "config": {
+        "model": "gpt-4-turbo",
+        "temperature": 0.7,
+        "max_tokens": 500,
+        "system_message": "You are a sales analytics expert who provides actionable insights from data.",
+        "prompt": "You are analyzing weekly sales performance data for a field sales rep.\n\nMETRICS:\n- New Stores Added: {{step5.new_stores_added}}\n- Total Orders: {{step5.total_orders}}\n- First Orders: {{step5.first_orders}}\n- Reorders: {{step5.reorders}}\n- Total Cases Sold: {{step5.total_cases}}\n- Calls Made: {{step5.calls_made}}\n- Visits Made: {{step5.visits_made}}\n- Emails Sent: {{step5.emails_sent}}\n- Conversion Rate: {{step5.conversion_rate}}%\n- Stores Contacted: {{step5.stores_contacted}}\n- Stores Converted: {{step5.stores_converted}}\n\nTop Brands by Orders:\n{{step5.orders_by_brand}}\n\nGenerate 3-5 actionable insights and recommendations based on this data. Each insight should:\n1. Highlight a trend or pattern\n2. Explain what it means\n3. Suggest a specific action to take\n\nFormat as a numbered list. Be specific and actionable, not generic."
+      }
+    },
+    {
+      "step": 7,
+      "name": "AI Generate Weekly Report Email",
+      "app": "OpenAI (GPT-4)",
+      "action": "Send Prompt",
+      "config": {
+        "model": "gpt-4-turbo",
+        "temperature": 0.7,
+        "max_tokens": 800,
+        "system_message": "You are an expert at creating motivating, data-driven sales reports.",
+        "prompt": "You are creating a weekly sales report for a field sales rep.\n\nREPORTING PERIOD: {{step1.week_label}}\n\nKEY METRICS:\n- New Stores Added: {{step5.new_stores_added}}\n- Total Active Stores: {{step5.total_stores}}\n- Total Orders This Week: {{step5.total_orders}}\n  - First Orders: {{step5.first_orders}}\n  - Reorders: {{step5.reorders}}\n- Total Cases Sold: {{step5.total_cases}}\n- Conversion Rate: {{step5.conversion_rate}}%\n\nACTIVITY SUMMARY:\n- Calls Made: {{step5.calls_made}}\n- Visits Made: {{step5.visits_made}}\n- Emails Sent: {{step5.emails_sent}}\n- Stores Contacted: {{step5.stores_contacted}}\n- Stores Converted: {{step5.stores_converted}}\n\nTOP BRANDS:\n{{step5.orders_by_brand}}\n\nAI INSIGHTS:\n{{step6.response}}\n\nWrite a professional weekly sales report email that:\n1. Opens with a positive, motivating greeting\n2. Summarizes the week's performance highlights\n3. Presents key metrics in an organized way\n4. Includes the AI insights\n5. Recognizes achievements and progress\n6. Suggests focus areas for next week\n7. Ends with encouragement\n8. Keeps it concise but comprehensive (400-500 words)\n\nFormat:\nSubject: [motivating subject line with week dates]\n\n[email body with clear sections]\n\nUse professional but friendly tone. Include some emoji for visual interest but don't overdo it."
+      }
+    },
+    {
+      "step": 8,
+      "name": "Extract Email Subject",
+      "app": "Formatter by Zapier",
+      "action": "Text",
+      "config": {
+        "transform": "Extract Pattern",
+        "input": "{{step7.response}}",
+        "pattern": "Subject: (.+)"
+      }
+    },
+    {
+      "step": 9,
+      "name": "Extract Email Body",
+      "app": "Formatter by Zapier",
+      "action": "Text",
+      "config": {
+        "transform": "Split Text",
+        "input": "{{step7.response}}",
+        "separator": "\\n\\n",
+        "segment_index": 1
+      }
+    },
+    {
+      "step": 10,
+      "name": "Create Markdown Report",
+      "app": "Code by Zapier",
+      "action": "Run Python",
+      "config": {
+        "code": "from datetime import datetime\n\nmetrics = input_data.get('metrics', {})\ninsights = input_data.get('insights', '')\nstart = input_data.get('start_date', '')\nend = input_data.get('end_date', '')\n\nreport = f'''# Weekly Sales Report\n\n**Period:** {start} to {end}  \n**Generated:** {datetime.now().strftime(\"%Y-%m-%d %H:%M\")}\n\n---\n\n## Executive Summary\n\nThis week, you added **{metrics.get(\"new_stores_added\", 0)} new stores**, closed **{metrics.get(\"total_orders\", 0)} orders** ({metrics.get(\"first_orders\", 0)} first-time, {metrics.get(\"reorders\", 0)} reorders), and sold **{metrics.get(\"total_cases\", 0)} cases** across all brands. Your conversion rate was **{metrics.get(\"conversion_rate\", 0)}%**.\n\n---\n\n## Key Metrics\n\n### Sales Performance\n\n| Metric | Value |\n|--------|-------|\n| Total Orders | {metrics.get(\"total_orders\", 0)} |\n| First Orders | {metrics.get(\"first_orders\", 0)} |\n| Reorders | {metrics.get(\"reorders\", 0)} |\n| Total Cases Sold | {metrics.get(\"total_cases\", 0)} |\n| Conversion Rate | {metrics.get(\"conversion_rate\", 0)}% |\n\n### Activity Summary\n\n| Activity Type | Count |\n|---------------|-------|\n| Calls Made | {metrics.get(\"calls_made\", 0)} |\n| Visits Made | {metrics.get(\"visits_made\", 0)} |\n| Emails Sent | {metrics.get(\"emails_sent\", 0)} |\n\n---\n\n## AI-Generated Insights\n\n{insights}\n\n---\n\n*Report generated automatically by Agent 5*\n'''\n\nreturn {'markdown_report': report}",
+        "input_data": {
+          "metrics": "{{step5}}",
+          "insights": "{{step6.response}}",
+          "start_date": "{{step1.start_date}}",
+          "end_date": "{{step1.end_date}}"
+        }
+      }
+    },
+    {
+      "step": 11,
+      "name": "Save Report to Google Docs",
+      "app": "Google Docs",
+      "action": "Create Document from Text",
+      "config": {
+        "folder": "RepRally Reports",
+        "title": "Weekly Report - {{step1.week_label}}",
+        "content": "{{step10.markdown_report}}"
+      }
+    },
+    {
+      "step": 12,
+      "name": "Log Report to Sheet",
+      "app": "Google Sheets",
+      "action": "Create Spreadsheet Row",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Weekly Reports",
+        "values": {
+          "Week Start": "{{step1.start_date}}",
+          "Week End": "{{step1.end_date}}",
+          "New Stores": "{{step5.new_stores_added}}",
+          "Total Orders": "{{step5.total_orders}}",
+          "First Orders": "{{step5.first_orders}}",
+          "Reorders": "{{step5.reorders}}",
+          "Total Cases": "{{step5.total_cases}}",
+          "Calls": "{{step5.calls_made}}",
+          "Visits": "{{step5.visits_made}}",
+          "Emails": "{{step5.emails_sent}}",
+          "Conversion Rate": "{{step5.conversion_rate}}",
+          "Report Link": "{{step11.document_url}}",
+          "Generated": "{{zap_meta_human_now}}"
+        }
+      }
+    },
+    {
+      "step": 13,
+      "name": "Send Report Email",
+      "app": "Email by Zapier",
+      "action": "Send Outbound Email",
+      "config": {
+        "to": "YOUR_EMAIL@example.com",
+        "subject": "{{step8.subject}}",
+        "body": "{{step9.body}}\n\n---\n\n📊 DETAILED REPORT\nView full report: {{step11.document_url}}\n\n📈 QUICK LINKS\n- HubSpot Dashboard: https://app.hubspot.com/\n- Google Sheets Database: [YOUR_SHEETS_URL]\n- Previous Reports: [YOUR_REPORTS_FOLDER_URL]\n\n---\n\nThis report was automatically generated by your AI sales assistant. Have a great week ahead! 🚀"
+      }
+    },
+    {
+      "step": 14,
+      "name": "Optional: Post to Slack",
+      "app": "Slack",
+      "action": "Send Channel Message",
+      "config": {
+        "channel": "#sales-reports",
+        "message_text": "📊 Weekly Sales Report for {{step1.week_label}}\n\n*Key Highlights:*\n• Orders: {{step5.total_orders}} ({{step5.first_orders}} new, {{step5.reorders}} repeat)\n• Cases Sold: {{step5.total_cases}}\n• Conversion: {{step5.conversion_rate}}%\n• New Stores: {{step5.new_stores_added}}\n\n<{{step11.document_url}}|View Full Report>"
+      },
+      "note": "Optional - disable if not using Slack"
+    },
+    {
+      "step": 15,
+      "name": "Create HubSpot Note with Report",
+      "app": "HubSpot",
+      "action": "Create Note",
+      "config": {
+        "note_body": "📊 WEEKLY SALES REPORT\n\nWeek: {{step1.week_label}}\n\nSUMMARY:\n- Orders: {{step5.total_orders}} ({{step5.first_orders}} first, {{step5.reorders}} reorders)\n- Cases: {{step5.total_cases}}\n- Activities: {{step5.calls_made}} calls, {{step5.visits_made}} visits, {{step5.emails_sent}} emails\n- Conversion: {{step5.conversion_rate}}%\n\nFull Report: {{step11.document_url}}\n\n{{step6.response}}"
+      }
+    }
+  ],
+  "filters": [
+    {
+      "step": "Between step 5 and 6",
+      "condition": "Only continue if total_orders > 0 OR total_activities > 0",
+      "note": "Skip report if no activity at all"
+    }
+  ],
+  "error_handling": {
+    "on_error": "Send notification email to admin",
+    "retry_failed_steps": true,
+    "max_retries": 2
+  },
+  "customization_notes": [
+    "Update YOUR_EMAIL@example.com in step 13 to the sales rep's email",
+    "Update [YOUR_SHEETS_URL] in step 13 to your Google Sheets URL",
+    "Update [YOUR_REPORTS_FOLDER_URL] in step 13 to your reports folder",
+    "Create a 'Weekly Reports' worksheet in Google Sheets for logging",
+    "Create a 'RepRally Reports' folder in Google Drive for storing reports",
+    "Adjust trigger day/time based on your preference",
+    "Step 14 (Slack) is optional - disable if not needed",
+    "You can add multiple email recipients in step 13 if needed"
+  ],
+  "optional_enhancements": [
+    {
+      "enhancement": "Comparison to Previous Weeks",
+      "description": "Add trend analysis comparing this week to previous weeks",
+      "implementation": "Query Weekly Reports sheet for last 4 weeks and calculate trends"
+    },
+    {
+      "enhancement": "Goal Tracking",
+      "description": "Compare actual performance to weekly/monthly goals",
+      "implementation": "Create a Goals sheet and compare metrics to targets"
+    },
+    {
+      "enhancement": "Visual Charts",
+      "description": "Include charts and graphs in the report",
+      "implementation": "Use Google Charts API or Quickchart.io to generate chart images"
+    },
+    {
+      "enhancement": "Competitor Intelligence",
+      "description": "Include market trends or competitor information",
+      "implementation": "Integrate with news API or web scraping for industry updates"
+    }
+  ]
+}

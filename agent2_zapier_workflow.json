@@ -1,0 +1,209 @@
+{
+  "workflow_name": "Agent 2: Email & Follow-up Writer",
+  "description": "Automatically generates personalized outreach emails, text scripts, and call scripts for new leads",
+  "trigger": {
+    "app": "HubSpot",
+    "event": "New Deal in Stage",
+    "pipeline": "Sales Pipeline",
+    "stage": "New Lead"
+  },
+  "steps": [
+    {
+      "step": 1,
+      "name": "Get Deal Details",
+      "app": "HubSpot",
+      "action": "Get Deal",
+      "config": {
+        "deal_id": "{{trigger.deal_id}}"
+      },
+      "output_fields": [
+        "dealname",
+        "dealstage",
+        "associated_contact_id"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Get Contact Details",
+      "app": "HubSpot",
+      "action": "Get Contact",
+      "config": {
+        "contact_id": "{{step1.associated_contact_id}}"
+      },
+      "output_fields": [
+        "firstname",
+        "company",
+        "email",
+        "phone",
+        "city",
+        "store_type"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Get Brand from Deal Name",
+      "app": "Google Sheets",
+      "action": "Lookup Spreadsheet Row",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Brands",
+        "lookup_column": "Brand Name",
+        "lookup_value": "{{step1.dealname}}"
+      },
+      "output_fields": [
+        "brand_name",
+        "category",
+        "summary",
+        "ideal_stores",
+        "talking_points",
+        "suggested_opening_order"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Generate Intro Email",
+      "app": "OpenAI (GPT-4)",
+      "action": "Send Prompt",
+      "config": {
+        "model": "gpt-4-turbo",
+        "temperature": 0.7,
+        "max_tokens": 400,
+        "system_message": "You are an expert sales copywriter who creates personalized, effective outreach emails.",
+        "prompt": "You are writing a professional but friendly sales email for a field sales rep.\n\nSTORE INFORMATION:\n- Name: {{step2.company}}\n- Type: {{step2.store_type}}\n- City: {{step2.city}}\n\nBRAND INFORMATION:\n- Brand: {{step3.brand_name}}\n- Category: {{step3.category}}\n- Summary: {{step3.summary}}\n- Ideal Stores: {{step3.ideal_stores}}\n- Talking Points: {{step3.talking_points}}\n\nWrite a brief introduction email (150-200 words) that:\n1. Introduces yourself as a local sales rep\n2. Mentions why this brand is a good fit for their store type\n3. Highlights 1-2 key benefits or unique selling points\n4. Suggests a quick call or visit to discuss\n5. Keeps a friendly, conversational tone\n\nSubject line should be short and relevant.\n\nFormat:\nSubject: [subject line]\n\n[email body]\n\nBest regards,\n[Your Name]\nField Sales Representative"
+      }
+    },
+    {
+      "step": 5,
+      "name": "Generate Text Script",
+      "app": "OpenAI (GPT-4)",
+      "action": "Send Prompt",
+      "config": {
+        "model": "gpt-4-turbo",
+        "temperature": 0.7,
+        "max_tokens": 150,
+        "system_message": "You are an expert at writing concise, friendly business text messages.",
+        "prompt": "You are writing a brief text message or Instagram DM for a field sales rep.\n\nSTORE INFORMATION:\n- Name: {{step2.company}}\n- Type: {{step2.store_type}}\n\nBRAND INFORMATION:\n- Brand: {{step3.brand_name}}\n- Summary: {{step3.summary}}\n\nWrite a very short text message (2-3 sentences, max 160 characters) that:\n1. Introduces yourself briefly\n2. Mentions the brand\n3. Asks if they have a moment to chat\n4. Sounds natural and conversational\n\nKeep it casual and friendly, like you're texting a potential business partner."
+      }
+    },
+    {
+      "step": 6,
+      "name": "Generate Call Script",
+      "app": "OpenAI (GPT-4)",
+      "action": "Send Prompt",
+      "config": {
+        "model": "gpt-4-turbo",
+        "temperature": 0.7,
+        "max_tokens": 800,
+        "system_message": "You are an expert sales trainer who creates effective call scripts.",
+        "prompt": "You are creating a call script for a field sales rep.\n\nSTORE INFORMATION:\n- Name: {{step2.company}}\n- Type: {{step2.store_type}}\n- Owner/Contact: {{step2.firstname}}\n\nBRAND INFORMATION:\n- Brand: {{step3.brand_name}}\n- Category: {{step3.category}}\n- Summary: {{step3.summary}}\n- Talking Points: {{step3.talking_points}}\n- Suggested Opening Order: {{step3.suggested_opening_order}}\n\nCreate a call script with:\n\n1. OPENING (brief introduction)\n2. VALUE PROPOSITION (why this brand fits their store)\n3. KEY QUESTIONS (4-5 discovery questions to ask)\n4. OBJECTION RESPONSES (2-3 common objections and how to handle them)\n5. CLOSING (suggest next steps)\n\nKeep it conversational and natural, not overly scripted."
+      }
+    },
+    {
+      "step": 7,
+      "name": "Create Note with Intro Email",
+      "app": "HubSpot",
+      "action": "Create Engagement",
+      "config": {
+        "engagement_type": "NOTE",
+        "contact_id": "{{step2.contact_id}}",
+        "note_body": "📧 INTRO EMAIL - READY TO SEND\n\n{{step4.response}}\n\n---\nGenerated by AI Email Writer\nReview and customize before sending!"
+      }
+    },
+    {
+      "step": 8,
+      "name": "Create Note with Text Script",
+      "app": "HubSpot",
+      "action": "Create Engagement",
+      "config": {
+        "engagement_type": "NOTE",
+        "contact_id": "{{step2.contact_id}}",
+        "note_body": "📱 TEXT MESSAGE SCRIPT\n\n{{step5.response}}\n\n---\nGenerated by AI Email Writer\nCustomize as needed!"
+      }
+    },
+    {
+      "step": 9,
+      "name": "Create Note with Call Script",
+      "app": "HubSpot",
+      "action": "Create Engagement",
+      "config": {
+        "engagement_type": "NOTE",
+        "contact_id": "{{step2.contact_id}}",
+        "note_body": "📞 CALL SCRIPT\n\n{{step6.response}}\n\n---\nGenerated by AI Email Writer\nUse as a guide during your call!"
+      }
+    },
+    {
+      "step": 10,
+      "name": "Create Task to Review Outreach",
+      "app": "HubSpot",
+      "action": "Create Task",
+      "config": {
+        "task_type": "TODO",
+        "subject": "Review & Send Outreach: {{step2.company}}",
+        "contact_id": "{{step2.contact_id}}",
+        "due_date": "{{zap_meta_human_now}} + 1 day",
+        "priority": "HIGH",
+        "notes": "AI has generated intro email, text script, and call script. Review the notes on this contact and customize before sending.\n\nBrand: {{step3.brand_name}}\nStore: {{step2.company}}\nType: {{step2.store_type}}"
+      }
+    },
+    {
+      "step": 11,
+      "name": "Update Deal Stage",
+      "app": "HubSpot",
+      "action": "Update Deal",
+      "config": {
+        "deal_id": "{{step1.deal_id}}",
+        "properties": {
+          "dealstage": "Outreach Prepared"
+        }
+      }
+    }
+  ],
+  "alternative_workflows": [
+    {
+      "workflow_name": "Agent 2B: Follow-up Email Generator",
+      "description": "Generates follow-up emails based on previous contact notes",
+      "trigger": {
+        "app": "HubSpot",
+        "event": "Deal Stage Changed",
+        "from_stage": "Contacted",
+        "to_stage": "Follow-up Needed"
+      },
+      "key_steps": [
+        "Get last activity notes from contact",
+        "Generate follow-up email using AI based on notes",
+        "Save as note in HubSpot",
+        "Create task to review and send"
+      ]
+    },
+    {
+      "workflow_name": "Agent 2C: Reorder Email Generator",
+      "description": "Generates reorder reminder emails for existing customers",
+      "trigger": {
+        "app": "Google Sheets",
+        "event": "Updated Spreadsheet Row",
+        "worksheet": "Orders",
+        "trigger_column": "Next Reorder Date",
+        "condition": "Next Reorder Date is within 3 days"
+      },
+      "key_steps": [
+        "Get store and brand details",
+        "Get last order information",
+        "Generate reorder email using AI",
+        "Save as note in HubSpot",
+        "Create task to send reorder email"
+      ]
+    }
+  ],
+  "error_handling": {
+    "on_error": "Send notification email to rep",
+    "retry_failed_steps": true,
+    "max_retries": 2
+  },
+  "notes": [
+    "This workflow triggers when a new deal enters the 'New Lead' stage in HubSpot",
+    "The brand name should be included in the deal name for lookup in the Brands sheet",
+    "All generated content is saved as notes on the contact for easy access",
+    "Rep should review and customize content before sending",
+    "The workflow automatically creates a task reminder to review the outreach materials"
+  ]
+}

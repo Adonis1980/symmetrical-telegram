@@ -1,0 +1,155 @@
+{
+  "workflow_name": "Agent 1: Store Research & Enrichment",
+  "description": "Automatically enriches new store records with contact info and categorization",
+  "trigger": {
+    "app": "Google Sheets",
+    "event": "New Spreadsheet Row",
+    "spreadsheet": "RepRally Sales Database",
+    "worksheet": "Stores",
+    "trigger_column": "Store Name"
+  },
+  "steps": [
+    {
+      "step": 1,
+      "name": "Get Store Details",
+      "app": "Google Sheets",
+      "action": "Lookup Spreadsheet Row",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Stores",
+        "lookup_column": "Store Name",
+        "lookup_value": "{{trigger.store_name}}"
+      },
+      "output_fields": [
+        "store_name",
+        "city",
+        "store_id"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "AI Research Store Information",
+      "app": "OpenAI (GPT-4)",
+      "action": "Send Prompt",
+      "config": {
+        "model": "gpt-4-turbo",
+        "temperature": 0.3,
+        "max_tokens": 500,
+        "system_message": "You are a sales research assistant that finds accurate business contact information. You provide structured data in JSON format.",
+        "prompt": "You are helping research retail stores for a sales team.\n\nStore to research:\n- Name: {{step1.store_name}}\n- City: {{step1.city}}\n\nPlease provide the following information in JSON format:\n\n{\n    \"phone\": \"phone number if found, or 'Not found'\",\n    \"email\": \"email address if found, or 'Not found'\",\n    \"instagram\": \"Instagram handle without @ if found, or 'Not found'\",\n    \"website\": \"website URL if found, or 'Not found'\",\n    \"full_address\": \"complete street address if found, or 'Not found'\",\n    \"store_type\": \"one of: liquor store, convenience store (c-store), smoke shop, cafe/coffee shop, wellness store, dispensary, grocery store, specialty retail, gas station, other\",\n    \"confidence\": \"high/medium/low based on certainty\",\n    \"notes\": \"relevant notes about products they carry or business focus\"\n}\n\nGuidelines:\n1. Choose store_type based on products they likely sell\n2. Mark uncertain info as 'Not found'\n3. Instagram handle without @\n4. Website with full URL\n5. Note any details about product focus\n\nProvide only the JSON object."
+      },
+      "output_fields": [
+        "phone",
+        "email",
+        "instagram",
+        "website",
+        "full_address",
+        "store_type",
+        "confidence",
+        "notes"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Parse AI Response",
+      "app": "Formatter by Zapier",
+      "action": "Text",
+      "config": {
+        "transform": "Extract Pattern",
+        "input": "{{step2.response}}",
+        "pattern": "\\{[\\s\\S]*\\}"
+      }
+    },
+    {
+      "step": 4,
+      "name": "Update Google Sheets",
+      "app": "Google Sheets",
+      "action": "Update Spreadsheet Row",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Stores",
+        "row": "{{step1.row_number}}",
+        "fields": {
+          "Phone": "{{step3.phone}}",
+          "Email": "{{step3.email}}",
+          "Instagram": "{{step3.instagram}}",
+          "Website": "{{step3.website}}",
+          "Address": "{{step3.full_address}}",
+          "Store Type": "{{step3.store_type}}",
+          "Status": "new",
+          "First Contact Date": "{{zap_meta_human_now}}",
+          "Notes": "{{step3.notes}}"
+        }
+      }
+    },
+    {
+      "step": 5,
+      "name": "Create HubSpot Contact",
+      "app": "HubSpot",
+      "action": "Create or Update Contact",
+      "config": {
+        "search_by": "email",
+        "email": "{{step3.email}}",
+        "properties": {
+          "firstname": "{{step1.store_name}}",
+          "company": "{{step1.store_name}}",
+          "phone": "{{step3.phone}}",
+          "website": "{{step3.website}}",
+          "address": "{{step3.full_address}}",
+          "city": "{{step1.city}}",
+          "store_type": "{{step3.store_type}}",
+          "lifecyclestage": "lead",
+          "hs_lead_status": "NEW"
+        }
+      }
+    },
+    {
+      "step": 6,
+      "name": "Add Note to HubSpot Contact",
+      "app": "HubSpot",
+      "action": "Create Engagement",
+      "config": {
+        "engagement_type": "NOTE",
+        "contact_id": "{{step5.contact_id}}",
+        "note_body": "Store Research Completed\n\nConfidence: {{step3.confidence}}\n\nResearch Notes:\n{{step3.notes}}\n\nNext Steps:\n- Review and verify contact information\n- Assign to sales rep\n- Begin outreach sequence"
+      }
+    },
+    {
+      "step": 7,
+      "name": "Create Follow-up Task",
+      "app": "HubSpot",
+      "action": "Create Task",
+      "config": {
+        "task_type": "TODO",
+        "subject": "Review & Verify: {{step1.store_name}}",
+        "contact_id": "{{step5.contact_id}}",
+        "due_date": "{{zap_meta_human_now}} + 1 day",
+        "priority": "MEDIUM",
+        "notes": "AI research completed with {{step3.confidence}} confidence. Please verify contact details and begin outreach."
+      }
+    },
+    {
+      "step": 8,
+      "name": "Send Notification",
+      "app": "Email by Zapier",
+      "action": "Send Outbound Email",
+      "config": {
+        "to": "YOUR_EMAIL@example.com",
+        "subject": "New Store Researched: {{step1.store_name}}",
+        "body": "A new store has been added and researched:\n\nStore: {{step1.store_name}}\nCity: {{step1.city}}\nType: {{step3.store_type}}\nConfidence: {{step3.confidence}}\n\nContact Info:\n- Phone: {{step3.phone}}\n- Email: {{step3.email}}\n- Instagram: {{step3.instagram}}\n- Website: {{step3.website}}\n\nNext step: Review in HubSpot and begin outreach.\n\nView in HubSpot: https://app.hubspot.com/contacts/[YOUR_PORTAL_ID]/contact/{{step5.contact_id}}"
+      }
+    }
+  ],
+  "error_handling": {
+    "on_error": "Send notification email",
+    "retry_failed_steps": true,
+    "max_retries": 2
+  },
+  "notes": [
+    "This workflow triggers when a new row is added to the Stores sheet with a Store Name and City",
+    "The AI will attempt to find contact information, but may return 'Not found' for missing data",
+    "Manual verification is recommended, especially for low-confidence results",
+    "Update YOUR_EMAIL@example.com in step 8 to your actual email address",
+    "Update [YOUR_PORTAL_ID] in step 8 to your HubSpot portal ID"
+  ]
+}

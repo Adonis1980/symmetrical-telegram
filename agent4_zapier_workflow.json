@@ -1,0 +1,288 @@
+{
+  "workflow_name": "Agent 4: Order Entry Assistant",
+  "description": "Automates order processing, calculates reorder dates, and creates follow-up tasks",
+  "trigger": {
+    "app": "Google Sheets",
+    "event": "New Spreadsheet Row",
+    "spreadsheet": "RepRally Sales Database",
+    "worksheet": "Orders"
+  },
+  "steps": [
+    {
+      "step": 1,
+      "name": "Get Order Details",
+      "app": "Google Sheets",
+      "action": "Lookup Spreadsheet Row",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Orders",
+        "lookup_column": "Order ID",
+        "lookup_value": "{{trigger.order_id}}"
+      },
+      "output_fields": [
+        "order_id",
+        "store_id",
+        "brand_id",
+        "order_date",
+        "cases",
+        "skus",
+        "order_type"
+      ]
+    },
+    {
+      "step": 2,
+      "name": "Get Store Details",
+      "app": "Google Sheets",
+      "action": "Lookup Spreadsheet Row",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Stores",
+        "lookup_column": "Store ID",
+        "lookup_value": "{{step1.store_id}}"
+      },
+      "output_fields": [
+        "store_name",
+        "owner_contact",
+        "email",
+        "phone",
+        "store_type",
+        "status"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Get Brand Details",
+      "app": "Google Sheets",
+      "action": "Lookup Spreadsheet Row",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Brands",
+        "lookup_column": "Brand ID",
+        "lookup_value": "{{step1.brand_id}}"
+      },
+      "output_fields": [
+        "brand_name",
+        "category"
+      ]
+    },
+    {
+      "step": 4,
+      "name": "Calculate Reorder Date",
+      "app": "Code by Zapier",
+      "action": "Run Python",
+      "config": {
+        "code": "from datetime import datetime, timedelta\n\n# Input data\norder_date = input_data.get('order_date')\ncases = int(input_data.get('cases', 1))\ncategory = input_data.get('category', 'default').lower()\n\n# Reorder windows by category\nwindows = {\n    'beverages': (21, 28),\n    'wellness': (28, 35),\n    'tobacco': (21, 30),\n    'food': (14, 21),\n    'default': (21, 35)\n}\n\n# Get window\nmin_days, max_days = windows.get(category, windows['default'])\n\n# Adjust based on order size\nif cases >= 10:\n    days = max_days\nelif cases >= 5:\n    days = (min_days + max_days) // 2\nelse:\n    days = min_days\n\n# Calculate\norder_dt = datetime.strptime(order_date, '%Y-%m-%d')\nreorder_dt = order_dt + timedelta(days=days)\n\nreturn {'next_reorder_date': reorder_dt.strftime('%Y-%m-%d'), 'days_until_reorder': days}",
+        "input_data": {
+          "order_date": "{{step1.order_date}}",
+          "cases": "{{step1.cases}}",
+          "category": "{{step3.category}}"
+        }
+      },
+      "output_fields": [
+        "next_reorder_date",
+        "days_until_reorder"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Update Orders Sheet with Reorder Date",
+      "app": "Google Sheets",
+      "action": "Update Spreadsheet Row",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Orders",
+        "lookup_column": "Order ID",
+        "lookup_value": "{{step1.order_id}}",
+        "fields": {
+          "Next Reorder Date": "{{step4.next_reorder_date}}"
+        }
+      }
+    },
+    {
+      "step": 6,
+      "name": "AI Generate Order Summary",
+      "app": "OpenAI (GPT-4)",
+      "action": "Send Prompt",
+      "config": {
+        "model": "gpt-4-turbo",
+        "temperature": 0.5,
+        "max_tokens": 150,
+        "system_message": "You are a helpful assistant that creates professional order summaries.",
+        "prompt": "You are summarizing a new order for a sales CRM.\n\nORDER DETAILS:\n- Store: {{step2.store_name}}\n- Brand: {{step3.brand_name}}\n- Order Date: {{step1.order_date}}\n- Cases: {{step1.cases}}\n- SKUs: {{step1.skus}}\n- Order Type: {{step1.order_type}}\n- Next Reorder Date: {{step4.next_reorder_date}}\n\nWrite a brief, professional summary (2-3 sentences) that:\n1. Confirms the order details\n2. Notes if this is a first order or reorder\n3. Mentions the next reorder date\n4. Sounds positive and appreciative\n\nKeep it concise and professional."
+      }
+    },
+    {
+      "step": 7,
+      "name": "AI Generate Thank You Note",
+      "app": "OpenAI (GPT-4)",
+      "action": "Send Prompt",
+      "config": {
+        "model": "gpt-4-turbo",
+        "temperature": 0.7,
+        "max_tokens": 250,
+        "system_message": "You are an expert at writing genuine, personalized thank you notes.",
+        "prompt": "You are writing a thank you note for a sales rep to send after receiving an order.\n\nORDER DETAILS:\n- Store: {{step2.store_name}}\n- Brand: {{step3.brand_name}}\n- Cases: {{step1.cases}}\n- First Order: {{step1.order_type}}\n\nWrite a brief thank you note (3-4 sentences) that:\n1. Thanks them for the order\n2. Welcomes them as a partner or appreciates continued business\n3. Offers support and mentions you'll check in soon\n4. Sounds genuine and personal, not generic\n\nFormat as an email.\n\nSubject: [subject line]\n\n[message body]\n\nBest regards,\n[Your Name]"
+      }
+    },
+    {
+      "step": 8,
+      "name": "Update Store Status to Customer",
+      "app": "Google Sheets",
+      "action": "Update Spreadsheet Row",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Stores",
+        "lookup_column": "Store ID",
+        "lookup_value": "{{step1.store_id}}",
+        "fields": {
+          "Status": "customer",
+          "Last Contact Date": "{{step1.order_date}}"
+        }
+      },
+      "condition": "Only if {{step1.order_type}} equals 'first'"
+    },
+    {
+      "step": 9,
+      "name": "Update HubSpot Contact Status",
+      "app": "HubSpot",
+      "action": "Create or Update Contact",
+      "config": {
+        "search_by": "email",
+        "email": "{{step2.email}}",
+        "properties": {
+          "lifecyclestage": "customer",
+          "hs_lead_status": "CUSTOMER",
+          "last_order_date": "{{step1.order_date}}",
+          "total_orders": "increment by 1"
+        }
+      }
+    },
+    {
+      "step": 10,
+      "name": "Create Order Note in HubSpot",
+      "app": "HubSpot",
+      "action": "Create Engagement",
+      "config": {
+        "engagement_type": "NOTE",
+        "contact_id": "{{step9.contact_id}}",
+        "note_body": "🎉 ORDER RECEIVED\n\n{{step6.response}}\n\n---\n\nThank You Note (Ready to Send):\n{{step7.response}}\n\n---\n\nNext Reorder: {{step4.next_reorder_date}} (in {{step4.days_until_reorder}} days)"
+      }
+    },
+    {
+      "step": 11,
+      "name": "Create Reorder Reminder Task in HubSpot",
+      "app": "HubSpot",
+      "action": "Create Task",
+      "config": {
+        "task_type": "TODO",
+        "subject": "Reorder Check: {{step2.store_name}} - {{step3.brand_name}}",
+        "contact_id": "{{step9.contact_id}}",
+        "due_date": "{{step4.next_reorder_date}}",
+        "priority": "MEDIUM",
+        "notes": "Time to check in on reorder for {{step2.store_name}}.\n\nLast Order Details:\n- Date: {{step1.order_date}}\n- Product: {{step3.brand_name}}\n- Quantity: {{step1.cases}} cases\n- SKUs: {{step1.skus}}\n\nAction Items:\n1. Call or visit the store\n2. Ask how the products are selling\n3. Check current inventory levels\n4. Suggest reorder quantity\n5. Address any concerns or feedback\n\nUse the reorder email template in notes."
+      }
+    },
+    {
+      "step": 12,
+      "name": "Log Activity to Activities Sheet",
+      "app": "Google Sheets",
+      "action": "Create Spreadsheet Row",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Activities",
+        "values": {
+          "Activity ID": "{{step1.order_id}}_activity",
+          "Store ID": "{{step1.store_id}}",
+          "Activity Type": "order",
+          "Date": "{{step1.order_date}}",
+          "Raw Notes": "Order placed: {{step3.brand_name}} - {{step1.cases}} cases",
+          "AI Summary": "{{step6.response}}",
+          "Outcome": "ordered",
+          "Next Step": "Check in for reorder",
+          "Next Step Date": "{{step4.next_reorder_date}}"
+        }
+      }
+    },
+    {
+      "step": 13,
+      "name": "Check if First Order for Brand",
+      "app": "Google Sheets",
+      "action": "Lookup Spreadsheet Rows",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Orders",
+        "lookup_column": "Store ID",
+        "lookup_value": "{{step1.store_id}}",
+        "max_results": 100
+      },
+      "note": "Count total orders for this store to determine if this is truly first order"
+    },
+    {
+      "step": 14,
+      "name": "Send Notification to Rep",
+      "app": "Email by Zapier",
+      "action": "Send Outbound Email",
+      "config": {
+        "to": "YOUR_EMAIL@example.com",
+        "subject": "✅ Order Processed: {{step2.store_name}} - {{step3.brand_name}}",
+        "body": "Great news! An order has been processed and logged.\n\n📦 ORDER DETAILS:\nStore: {{step2.store_name}}\nBrand: {{step3.brand_name}}\nCases: {{step1.cases}}\nSKUs: {{step1.skus}}\nOrder Type: {{step1.order_type}}\n\n📅 NEXT STEPS:\nReorder reminder set for: {{step4.next_reorder_date}}\n\n💌 THANK YOU NOTE:\nA thank you note has been generated and saved in HubSpot. Review and send it to {{step2.store_name}}.\n\n🔗 QUICK LINKS:\nView in HubSpot: https://app.hubspot.com/contacts/[YOUR_PORTAL_ID]/contact/{{step9.contact_id}}\nView Orders Sheet: [YOUR_SHEETS_URL]\n\nKeep up the great work! 🎉"
+      }
+    },
+    {
+      "step": 15,
+      "name": "Optional: Update Deal Stage",
+      "app": "HubSpot",
+      "action": "Find Deal",
+      "config": {
+        "associated_contact": "{{step9.contact_id}}",
+        "dealstage": "Proposal Sent"
+      },
+      "note": "Find and update any open deals to 'Closed Won'"
+    },
+    {
+      "step": 16,
+      "name": "Close Won Deal",
+      "app": "HubSpot",
+      "action": "Update Deal",
+      "config": {
+        "deal_id": "{{step15.deal_id}}",
+        "properties": {
+          "dealstage": "Closed Won",
+          "closedate": "{{step1.order_date}}",
+          "amount": "{{step1.cases}} * 100"
+        }
+      },
+      "condition": "Only if deal found in step 15"
+    }
+  ],
+  "error_handling": {
+    "on_error": "Send notification email to admin",
+    "retry_failed_steps": true,
+    "max_retries": 2
+  },
+  "customization_notes": [
+    "Update YOUR_EMAIL@example.com in step 14 to the sales rep's email",
+    "Update [YOUR_PORTAL_ID] in step 14 to your HubSpot portal ID",
+    "Update [YOUR_SHEETS_URL] in step 14 to your Google Sheets URL",
+    "Adjust reorder windows in step 4 code based on your product categories",
+    "Consider adding Slack notification instead of or in addition to email",
+    "You can customize the thank you note template in step 7"
+  ],
+  "optional_enhancements": [
+    {
+      "enhancement": "Inventory Tracking",
+      "description": "Track estimated inventory levels based on order size and reorder timing",
+      "implementation": "Add calculation in Code step to estimate daily sell-through rate"
+    },
+    {
+      "enhancement": "Automated Thank You Sending",
+      "description": "Automatically send thank you email instead of just generating it",
+      "implementation": "Add Gmail or Email by Zapier step to send the generated thank you note"
+    },
+    {
+      "enhancement": "Revenue Tracking",
+      "description": "Calculate and track revenue per order",
+      "implementation": "Add product pricing data and calculate order value in Code step"
+    }
+  ]
+}

@@ -1,0 +1,246 @@
+{
+  "workflow_name": "Agent 3: Daily Route & Reminder Agent",
+  "description": "Sends daily prioritized task list with calls, visits, and reorders due",
+  "trigger": {
+    "app": "Schedule by Zapier",
+    "event": "Every Day",
+    "time": "07:00 AM",
+    "timezone": "America/New_York"
+  },
+  "steps": [
+    {
+      "step": 1,
+      "name": "Get Today's Date",
+      "app": "Formatter by Zapier",
+      "action": "Date/Time",
+      "config": {
+        "transform": "Format",
+        "input": "{{zap_meta_human_now}}",
+        "to_format": "YYYY-MM-DD"
+      }
+    },
+    {
+      "step": 2,
+      "name": "Get Tasks Due Today from Activities Sheet",
+      "app": "Google Sheets",
+      "action": "Lookup Spreadsheet Rows",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Activities",
+        "lookup_column": "Next Step Date",
+        "lookup_value": "{{step1.formatted_date}}",
+        "max_results": 50
+      },
+      "output_fields": [
+        "store_name",
+        "next_step",
+        "next_step_date",
+        "ai_summary",
+        "outcome"
+      ]
+    },
+    {
+      "step": 3,
+      "name": "Get Overdue Tasks from Activities Sheet",
+      "app": "Google Sheets",
+      "action": "Lookup Spreadsheet Rows",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Activities",
+        "lookup_column": "Next Step Date",
+        "lookup_value": "<{{step1.formatted_date}}",
+        "max_results": 50
+      }
+    },
+    {
+      "step": 4,
+      "name": "Get HubSpot Tasks Due Today",
+      "app": "HubSpot",
+      "action": "Find Tasks",
+      "config": {
+        "task_type": "TODO",
+        "due_date": "{{step1.formatted_date}}",
+        "status": "NOT_STARTED"
+      },
+      "output_fields": [
+        "subject",
+        "notes",
+        "priority",
+        "associated_contact"
+      ]
+    },
+    {
+      "step": 5,
+      "name": "Calculate Week Ahead Date",
+      "app": "Formatter by Zapier",
+      "action": "Date/Time",
+      "config": {
+        "transform": "Add/Subtract Time",
+        "input": "{{step1.formatted_date}}",
+        "expression": "+7 days",
+        "to_format": "YYYY-MM-DD"
+      }
+    },
+    {
+      "step": 6,
+      "name": "Get Reorders Due This Week",
+      "app": "Google Sheets",
+      "action": "Lookup Spreadsheet Rows",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Orders",
+        "lookup_column": "Next Reorder Date",
+        "lookup_value": "{{step1.formatted_date}}:{{step5.week_ahead_date}}",
+        "max_results": 50
+      },
+      "output_fields": [
+        "store_name",
+        "brand_name",
+        "order_date",
+        "next_reorder_date",
+        "cases"
+      ]
+    },
+    {
+      "step": 7,
+      "name": "Count Total Tasks",
+      "app": "Formatter by Zapier",
+      "action": "Numbers",
+      "config": {
+        "transform": "Perform Math Operation",
+        "operation": "Add",
+        "values": [
+          "{{step2.count}}",
+          "{{step3.count}}",
+          "{{step4.count}}",
+          "{{step6.count}}"
+        ]
+      }
+    },
+    {
+      "step": 8,
+      "name": "Format Task List",
+      "app": "Formatter by Zapier",
+      "action": "Text",
+      "config": {
+        "transform": "Default Value",
+        "input": "{{step2.store_name}}, {{step3.store_name}}, {{step4.subject}}, {{step6.store_name}}",
+        "default": "No tasks scheduled"
+      }
+    },
+    {
+      "step": 9,
+      "name": "AI Generate Daily Email",
+      "app": "OpenAI (GPT-4)",
+      "action": "Send Prompt",
+      "config": {
+        "model": "gpt-4-turbo",
+        "temperature": 0.7,
+        "max_tokens": 600,
+        "system_message": "You are a helpful assistant that creates motivating daily task emails for sales professionals.",
+        "prompt": "You are creating a daily task email for a field sales rep.\n\nDate: {{zap_meta_human_now}}\nTotal Tasks: {{step7.total}}\n\nTASKS DUE TODAY:\nFrom Activities Sheet:\n{{step2.store_name}} - {{step2.next_step}}\nNotes: {{step2.ai_summary}}\n\nOVERDUE TASKS:\n{{step3.store_name}} - {{step3.next_step}}\n\nHUBSPOT TASKS:\n{{step4.subject}}\n\nREORDERS DUE THIS WEEK:\n{{step6.store_name}} - {{step6.brand_name}} (Last order: {{step6.order_date}})\n\nWrite a motivating and organized daily email that:\n1. Greets the rep and sets a positive tone\n2. Summarizes the day (e.g., 'You have X tasks today')\n3. Lists high-priority tasks first (overdue, reorders, then regular tasks)\n4. Groups tasks by type (calls, visits, emails, reorders)\n5. Highlights any urgent items\n6. Ends with an encouraging note\n7. Keeps it concise (250-300 words)\n\nFormat:\nSubject: [motivating subject line with date]\n\n[email body]\n\nMake it sound friendly and supportive, not robotic."
+      }
+    },
+    {
+      "step": 10,
+      "name": "Extract Email Subject",
+      "app": "Formatter by Zapier",
+      "action": "Text",
+      "config": {
+        "transform": "Extract Pattern",
+        "input": "{{step9.response}}",
+        "pattern": "Subject: (.+)"
+      }
+    },
+    {
+      "step": 11,
+      "name": "Extract Email Body",
+      "app": "Formatter by Zapier",
+      "action": "Text",
+      "config": {
+        "transform": "Split Text",
+        "input": "{{step9.response}}",
+        "separator": "Subject:",
+        "segment_index": 2
+      }
+    },
+    {
+      "step": 12,
+      "name": "Send Daily Email to Rep",
+      "app": "Email by Zapier",
+      "action": "Send Outbound Email",
+      "config": {
+        "to": "YOUR_EMAIL@example.com",
+        "subject": "{{step10.subject}}",
+        "body": "{{step11.body}}\n\n---\n\nView all tasks in HubSpot: https://app.hubspot.com/tasks/\nView Google Sheets: [YOUR_SHEETS_URL]"
+      }
+    },
+    {
+      "step": 13,
+      "name": "Optional: Send SMS Summary",
+      "app": "SMS by Zapier",
+      "action": "Send SMS",
+      "config": {
+        "to": "+1234567890",
+        "body": "Good morning! You have {{step7.total}} tasks today:\n\n🔴 {{step3.count}} overdue\n📞 {{step2.count}} calls/visits\n🔄 {{step6.count}} reorders\n\nCheck your email for details. Have a great day! 💪"
+      },
+      "note": "Optional step - can be disabled if SMS not needed"
+    },
+    {
+      "step": 14,
+      "name": "Log Daily Summary to Sheet",
+      "app": "Google Sheets",
+      "action": "Create Spreadsheet Row",
+      "config": {
+        "spreadsheet": "RepRally Sales Database",
+        "worksheet": "Daily Summaries",
+        "values": {
+          "Date": "{{step1.formatted_date}}",
+          "Total Tasks": "{{step7.total}}",
+          "Tasks Due": "{{step2.count}}",
+          "Overdue": "{{step3.count}}",
+          "Reorders": "{{step6.count}}",
+          "Email Sent": "Yes",
+          "Timestamp": "{{zap_meta_human_now}}"
+        }
+      }
+    }
+  ],
+  "filters": [
+    {
+      "step": "Between step 7 and 8",
+      "condition": "Only continue if Total Tasks > 0",
+      "note": "Skip email if no tasks for the day"
+    }
+  ],
+  "error_handling": {
+    "on_error": "Send error notification to admin",
+    "retry_failed_steps": true,
+    "max_retries": 2
+  },
+  "customization_notes": [
+    "Update YOUR_EMAIL@example.com in step 12 to the sales rep's email",
+    "Update phone number in step 13 if using SMS",
+    "Adjust trigger time in workflow settings based on rep's timezone",
+    "Create a 'Daily Summaries' worksheet in Google Sheets for logging",
+    "You can add multiple recipients in step 12 if needed",
+    "Consider adding Slack notification as alternative to email"
+  ],
+  "optional_enhancements": [
+    {
+      "enhancement": "Route Optimization",
+      "description": "Add a step that uses Google Maps API to optimize visit order by location",
+      "implementation": "Use Webhooks by Zapier to call Google Maps Directions API with store addresses"
+    },
+    {
+      "enhancement": "Weather Integration",
+      "description": "Include local weather in daily email to help plan field visits",
+      "implementation": "Add Weather by Zapier step to get forecast and include in email"
+    },
+    {
+      "enhancement": "Performance Metrics",
+      "description": "Include yesterday's completed tasks and conversion rate",
+      "implementation": "Query HubSpot for completed tasks from previous day and calculate metrics"
+    }
+  ]
+}
